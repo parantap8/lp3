@@ -1,0 +1,155 @@
+import pandas as pd
+import numpy as np
+import seaborn as sns
+
+
+# 1. Pre-process Dataset
+# load dataset
+df = pd.read_csv("uber.csv");
+df.head()
+
+
+# handling missing values
+print(df.isnull().sum())
+df.dropna(inplace=True)
+print("\nShape after removing missing values: ", df.shape)
+
+
+# handling duplicates 
+print("Duplicate records: ", df.duplicated().sum())
+df.drop_duplicates(inplace=True)
+print("\nShape after removing duplicates:", df.shape)
+
+
+# remove unnecessary columns
+df.drop( columns=['Unnamed: 0', 'key'], errors='ignore', inplace=True )
+print(df.columns)
+
+
+# convert pickup datetime
+df['pickup_datetime'] = pd.to_datetime(
+    df['pickup_datetime'], errors='coerce', utc=True
+)
+df.dropna(subset=['pickup_datetime'],inplace=True)
+df['hour'] = df['pickup_datetime'].dt.hour
+df['day'] = df['pickup_datetime'].dt.day
+df['month'] = df['pickup_datetime'].dt.month
+df['year'] = df['pickup_datetime'].dt.year
+df.drop(columns=['pickup_datetime'], inplace=True)
+
+
+# remove invalid values
+df = df[(df['fare_amount'] > 0) & (df['passenger_count'] > 0) ]
+
+
+# verify cleaned dataset
+print("\nFinal shape: ",df.shape)
+print("\nMissing values: \n",df.isnull().sum())
+df.head()
+
+
+# 2. IDENTIFY OUTLIERS
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+# visualize outliers
+sns.boxplot(x=df['fare_amount'])
+plt.show()
+
+
+#identify outliers using IQR
+Q1 = df['fare_amount'].quantile(0.25)
+Q3 = df['fare_amount'].quantile(0.75)
+IQR = Q3-Q1
+lower = Q1 - 1.5 * IQR
+upper = Q3 + 1.5 * IQR
+print("Lower limit : ", lower)
+print("Upper limit : ", upper)
+
+
+# remove outliers
+df = df[ (df['fare_amount'] >= lower) & (df['fare_amount'] <= upper) ]
+print("Shape after removing outliers:", df.shape)
+
+
+# 3. Check the correlation
+# calculate correlation 
+corr = df.corr(numeric_only=True)
+print(corr)
+
+
+# check correlation using heatmap
+sns.heatmap(corr, annot=True, cmap='coolwarm', fmt=".2f")
+plt.title("correlation Heatmap")
+plt.show()
+
+
+# check the correlation with fare
+print(corr['fare_amount'])
+
+
+# 4. Implement Linear Regression and Random Forest Regression
+# separate features and target
+x = df.drop('fare_amount', axis=1)
+y = df['fare_amount']
+
+
+# split the dataset
+from sklearn.model_selection import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(
+    x, y, test_size=0.2, random_state=42
+) 
+
+
+# implement linear regression
+from sklearn.linear_model import LinearRegression
+model = LinearRegression()
+model.fit(x_train, y_train)
+y_pred = model.predict(x_test)
+
+
+# Implement Random Forest Regression
+from sklearn.ensemble import RandomForestRegressor
+rf = RandomForestRegressor(n_estimators = 100, random_state=42)
+rf.fit(x_train, y_train)
+y_pred_rf = rf.predict(x_test)
+
+
+# 5. Evaluate the models and compare their respective scores like R2, RMSE, etc.
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+print("Linear Regression")
+mae = mean_absolute_error(y_test, y_pred) #average of absolute error |y - y^|
+print("Mean Absolute Error = ", mae)
+mse = mean_squared_error(y_test, y_pred) #(|y-y^|)^2
+print("Mean Squared Error = ",mse)
+rmse = np.sqrt(mse) #root mean squared error
+print("Root Mean Squared Error = ", rmse)
+r2 = r2_score(y_test, y_pred) #measures how well model fits data 1.0 <- perfect prediction, 0.0 <- useless model, <0 <- worse than guessing
+print("R2 Score", r2)
+
+
+print("Random Forest")
+mae = mean_absolute_error(y_test, y_pred_rf) #average of absolute error |y - y^|
+print("Mean Absolute Error = ", mae)
+mse = mean_squared_error(y_test, y_pred_rf) #(|y-y^|)^2
+print("Mean Squared Error = ",mse)
+rmse = np.sqrt(mse) #root mean squared error
+print("Root Mean Squared Error = ", rmse)
+r2 = r2_score(y_test, y_pred_rf) #measures how well model fits data 1.0 <- perfect prediction, 0.0 <- useless model, <0 <- worse than guessing
+print("R2 Score", r2)
+
+
+# compare both models
+results = pd.DataFrame({
+    'Model': ['Linear Regression', 'Random Forest'],
+    'MAE' : [mean_absolute_error(y_test, y_pred), mean_absolute_error(y_test,y_pred_rf)],
+    'RMSE' : [mean_squared_error(y_test, y_pred), mean_squared_error(y_test, y_pred_rf)],
+    'R2 Score' : [r2_score(y_test, y_pred), r2_score(y_test, y_pred_rf)]
+})
+print(results)
+
+
+
+
+

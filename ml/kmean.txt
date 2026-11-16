@@ -1,0 +1,85 @@
+import pandas as pd
+import numpy as np
+
+
+# Load Dataset
+df = pd.read_csv('sales_data_sample.csv', encoding='latin1')
+df.head()
+
+
+# 3 Preprocess the dataset
+x = df[['QUANTITYORDERED', 'SALES']]
+x = x.dropna()
+
+
+# normalization of data
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
+x_scaled = scaler.fit_transform(x)
+
+
+# Find optimal clusters using Elbow Method
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans, AgglomerativeClustering
+wcss = []
+for i in range(1, 11) :
+    kmeans = KMeans(n_clusters=i, random_state=42, n_init=10)
+    kmeans.fit(x_scaled)
+    wcss.append(kmeans.inertia_)
+plt.plot(range(1,11), wcss, marker='o')
+plt.title('Elbow Method')
+plt.xlabel('Number of Clusters')
+plt.ylabel('WCSS')
+plt.show()
+
+
+# implement K-Mean clustering
+kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
+y_kmeans = kmeans.fit_predict(x_scaled)
+print("K-Means Cluster Labels:")
+print(y_kmeans)
+
+
+# visualize cluster
+plt.scatter(
+    x_scaled[:,0], x_scaled[:,1], c = y_kmeans, cmap='rainbow'
+)
+plt.title('K-Means Clustering')
+plt.xlabel('Quantity Ordered (Scaled)')
+plt.ylabel('Sales (Scaled)')
+plt.show()
+
+
+# Implement Hierarchical Clustering
+hc = AgglomerativeClustering(n_clusters=3, linkage='ward')
+y_hc = hc.fit_predict(x_scaled)
+print("Hierarchical Clustering:")
+print(y_hc)
+
+#Visualize using dendrogram
+from scipy.cluster.hierarchy import dendrogram, linkage
+plt.figure(figsize=(10, 5))
+dendrogram(linkage(X_scaled, method='ward'))
+plt.title('Hierarchical Clustering Dendrogram')
+plt.xlabel('Data Points')
+plt.ylabel('Distance')
+plt.show()
+
+
+# Display of cluster visualization
+plt.scatter(
+    x_scaled[:,0],
+    x_scaled[:,1],
+    c=y_hc,
+    cmap='rainbow'
+)
+plt.title('Hierarchical Clustering')
+plt.xlabel('Quantity Ordered (Scaled)')
+plt.ylabel('Scales (Scaled)')
+plt.show()
+
+
+print("K-Means Cluster Counts:")
+print(pd.Series(y_kmeans).value_counts())
+print("Hierarchical Cluster Counts:")
+print(pd.Series(y_hc).value_counts())
